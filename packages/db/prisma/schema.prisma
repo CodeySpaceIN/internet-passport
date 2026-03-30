@@ -1,0 +1,1112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  TRUST_REVIEWER
+  DEVELOPER
+  ANALYST
+}
+
+enum SubjectType {
+  HUMAN
+  DEVELOPER
+  ORG
+  AGENT
+}
+
+enum SubjectStatus {
+  ACTIVE
+  REVIEW
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  FAILED
+  CANCELED
+}
+
+enum VerificationCheckStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ReviewCaseStatus {
+  OPEN
+  IN_REVIEW
+  DECIDED
+  CLOSED
+}
+
+enum ReviewTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum WebhookDeliveryStatus {
+  QUEUED
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum IdentityProviderType {
+  EMAIL
+  GITHUB
+  GOOGLE
+  MICROSOFT
+  APPLE
+  WALLET
+  CUSTOM_OIDC
+}
+
+enum VerificationType {
+  IDENTITY
+  LIVENESS
+  ORGANIZATION
+  DOMAIN
+  DOCUMENT
+  AGENT_ATTESTATION
+  CONTENT_PROVENANCE
+}
+
+enum VerificationProviderType {
+  INTERNAL
+  MOCK
+  SUMSUB
+  TRULIOO
+  STRIPE_IDENTITY
+  CUSTOM
+}
+
+enum VerificationState {
+  DRAFT
+  PENDING
+  IN_PROGRESS
+  PASSED
+  FAILED
+  NEEDS_REVIEW
+  REJECTED
+  EXPIRED
+}
+
+enum TrustTier {
+  UNTRUSTED
+  LOW
+  MEDIUM
+  HIGH
+  VERIFIED
+}
+
+enum RiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskSignalType {
+  DEVICE_FINGERPRINT_MISMATCH
+  IP_REPUTATION_BAD
+  IMPOSSIBLE_TRAVEL
+  BOT_BEHAVIOR
+  VELOCITY_ANOMALY
+  DOMAIN_SPOOFING
+  CONTENT_TAMPERED
+  PAYMENT_ABUSE
+}
+
+enum OrganizationType {
+  COMPANY
+  NON_PROFIT
+  DAO
+  GOVERNMENT
+  COMMUNITY
+  OTHER
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  ADMIN
+  SECURITY
+  DEVELOPER
+  ANALYST
+  BILLING
+  REVIEWER
+}
+
+enum DomainVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED
+}
+
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+  REVOKED
+}
+
+enum AgentCredentialType {
+  API_KEY
+  OAUTH_CLIENT
+  JWT_SIGNING_KEY
+  X509_CERT
+}
+
+enum SignedActionStatus {
+  PENDING
+  VERIFIED
+  INVALID
+  EXPIRED
+  REVOKED
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  DISABLED
+  REVOKED
+  EXPIRED
+}
+
+enum ApiRequestOutcome {
+  SUCCESS
+  CLIENT_ERROR
+  SERVER_ERROR
+  RATE_LIMITED
+  UNAUTHORIZED
+}
+
+enum PublicTrustProfileStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  ARCHIVED
+}
+
+enum AdminFlagStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum AdminFlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  REVIEW_ASSIGNED
+  REVIEW_UPDATED
+  VERIFICATION_UPDATED
+  TRUST_SCORE_CHANGED
+  SECURITY_ALERT
+  INTEGRATION_ALERT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  DISMISSED
+}
+
+enum IntegrationType {
+  GITHUB
+  SLACK
+  DISCORD
+  ZAPIER
+  WEBHOOK
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  DISCONNECTED
+}
+
+model Tenant {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       Membership[]
+  subjects    Subject[]
+  workspaces  Workspace[]
+  apiClients  ApiClient[]
+  policies    Policy[]
+  trustEvents TrustDecision[]
+  actions     SignedAction[]
+  verificationRequests VerificationRequest[]
+  replayNonces ReplayNonce[]
+  auditEvents AuditEvent[]
+  reviewCases ReviewCase[]
+  trustCards TrustCard[]
+  webhookEndpoints WebhookEndpoint[]
+  webhookDeliveries WebhookDelivery[]
+  idempotencyKeys IdempotencyKey[]
+  organizations   Organization[]
+  sessions        Session[]
+  identityProviderLinks IdentityProviderLink[]
+  verificationRecords VerificationRecord[]
+  trustScores     TrustScore[]
+  riskSignals     RiskSignal[]
+  agents          Agent[]
+  agentCredentials AgentCredential[]
+  auditLogs       AuditLog[]
+  apiKeys         ApiKey[]
+  apiRequestLogs  ApiRequestLog[]
+  publicTrustProfiles PublicTrustProfile[]
+  adminFlags      AdminFlag[]
+  notifications   Notification[]
+  appIntegrations AppIntegration[]
+}
+
+model Workspace {
+  id        String       @id @default(cuid())
+  tenantId  String
+  name      String
+  slug      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members   Membership[]
+  subjects  Subject[]
+
+  @@unique([tenantId, slug])
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  imageUrl    String?
+  passwordHash String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  memberships Membership[]
+  assignedReviewTasks ReviewTask[] @relation("ReviewTaskAssignee")
+  reviewDecisions ReviewDecision[]
+  openedReviewCases ReviewCase[] @relation("ReviewCaseOpenedBy")
+  sessions      Session[]
+  identityProviderLinks IdentityProviderLink[]
+  organizationMemberships OrganizationMember[]
+  ownedOrganizations Organization[] @relation("OrganizationOwner")
+  managedAgents Agent[] @relation("AgentManager")
+  apiKeys       ApiKey[]
+  apiRequestLogs ApiRequestLog[]
+  trustScores   TrustScore[]
+  riskSignals   RiskSignal[]
+  verificationRecords VerificationRecord[]
+  verificationRecordsRequested VerificationRecord[] @relation("VerificationRequestedBy")
+  verificationRecordsReviewed  VerificationRecord[] @relation("VerificationReviewedBy")
+  trustProfiles PublicTrustProfile[]
+  publishedTrustProfiles PublicTrustProfile[] @relation("PublicTrustProfilePublisher")
+  adminFlags AdminFlag[]
+  raisedAdminFlags AdminFlag[] @relation("AdminFlagRaisedBy")
+  resolvedAdminFlags AdminFlag[] @relation("AdminFlagResolvedBy")
+  notifications Notification[]
+  appIntegrationsCreated AppIntegration[]
+  auditLogsAsActor AuditLog[] @relation("AuditActorUser")
+  deletedAt     DateTime?
+}
+
+model Membership {
+  id          String         @id @default(cuid())
+  tenantId    String
+  workspaceId String?
+  userId      String
+  role        MembershipRole
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace   Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+}
+
+model ApiClient {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  keyPrefix  String   @unique
+  keyHash    String
+  scopes     String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  id          String        @id @default(cuid())
+  tenantId    String
+  workspaceId String?
+  subjectType SubjectType
+  displayName String
+  status      SubjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace   Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  identities  IdentityCredential[]
+  profiles    TrustProfile[]
+  scoreSnapshots TrustScoreSnapshot[]
+  trustDecisions TrustDecision[]
+  signedActions SignedAction[]
+  verificationRequests VerificationRequest[]
+  verificationClaims VerificationClaim[]
+  reviewCases ReviewCase[]
+  trustCards TrustCard[]
+}
+
+model IdentityCredential {
+  id           String   @id @default(cuid())
+  subjectId    String
+  providerType String
+  providerRef  String
+  isVerified   Boolean  @default(false)
+  verifiedAt   DateTime?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+model Policy {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  contextType String
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  definition  Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scoreSnapshots TrustScoreSnapshot[]
+}
+
+model TrustScoreSnapshot {
+  id          String   @id @default(cuid())
+  subjectId   String
+  policyId    String?
+  score       Float
+  tier        String
+  reasonCodes String[]
+  featuresHash String
+  createdAt   DateTime @default(now())
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  policy      Policy?  @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  decisions   TrustDecision[]
+}
+
+model TrustProfile {
+  id              String   @id @default(cuid())
+  subjectId       String
+  currentScore    Float
+  currentTier     String
+  lastEvaluatedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+model TrustDecision {
+  id          String   @id @default(cuid())
+  tenantId    String
+  subjectId   String
+  scoreSnapshotId String?
+  contextType String
+  actionType  String
+  decision    String
+  reasonCodes String[]
+  policyVersion Int?
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  scoreSnapshot TrustScoreSnapshot? @relation(fields: [scoreSnapshotId], references: [id], onDelete: SetNull)
+  signedActions SignedAction[]
+}
+
+model SignedAction {
+  id          String   @id @default(cuid())
+  tenantId    String
+  subjectId   String
+  agentSubjectId String?
+  actionType  String
+  resourceType String
+  resourceId  String
+  contextType String
+  decisionRefId String?
+  actorAgentId String?
+  payloadHash String
+  nonce       String   @unique
+  signature   String
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  verificationStatus String @default("PENDING")
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  decision    TrustDecision? @relation(fields: [decisionRefId], references: [id], onDelete: SetNull)
+  actorAgent  Agent?   @relation("SignedActionActorAgent", fields: [actorAgentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, actorAgentId, createdAt])
+}
+
+model ReplayNonce {
+  id        String   @id @default(cuid())
+  tenantId  String
+  nonce     String
+  seenAt    DateTime @default(now())
+  expiresAt DateTime
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, nonce])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actorType  String
+  actorRef   String
+  eventType  String
+  entityType String
+  entityId   String
+  dataJson   Json
+  hashPrev   String?
+  hashSelf   String
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+model VerificationRequest {
+  id                String             @id @default(cuid())
+  tenantId          String
+  subjectId         String
+  verificationType  String
+  status            VerificationStatus @default(PENDING)
+  requestedByUserId String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  completedAt       DateTime?
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject           Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  checks            VerificationCheck[]
+  claims            VerificationClaim[]
+}
+
+model VerificationCheck {
+  id                    String                  @id @default(cuid())
+  verificationRequestId String
+  provider              String
+  providerCheckRef      String?
+  status                VerificationCheckStatus @default(QUEUED)
+  rawResultHash         String?
+  errorCode             String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  verificationRequest   VerificationRequest     @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+}
+
+model VerificationClaim {
+  id                    String               @id @default(cuid())
+  subjectId             String
+  verificationRequestId String?
+  claimType             String
+  claimLevel            String
+  valueJson             Json
+  issuer                String
+  issuedAt              DateTime             @default(now())
+  expiresAt             DateTime?
+  signature             String
+  revokedAt             DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  subject               Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  verificationRequest   VerificationRequest? @relation(fields: [verificationRequestId], references: [id], onDelete: SetNull)
+}
+
+model ReviewCase {
+  id          String           @id @default(cuid())
+  tenantId    String
+  subjectId   String
+  caseType    String
+  priority    String           @default("MEDIUM")
+  status      ReviewCaseStatus @default(OPEN)
+  openedByUserId String
+  openedAt    DateTime         @default(now())
+  closedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject     Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  tasks       ReviewTask[]
+  decisions   ReviewDecision[]
+  openedBy    User             @relation("ReviewCaseOpenedBy", fields: [openedByUserId], references: [id], onDelete: Cascade)
+  verificationRecords VerificationRecord[]
+  adminFlags  AdminFlag[]
+  notifications Notification[]
+
+  @@index([tenantId, status, priority])
+}
+
+model ReviewTask {
+  id            String           @id @default(cuid())
+  reviewCaseId  String
+  assignedToUserId String?
+  taskType      String
+  status        ReviewTaskStatus @default(OPEN)
+  dueAt         DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  reviewCase    ReviewCase       @relation(fields: [reviewCaseId], references: [id], onDelete: Cascade)
+  assignedTo    User?            @relation("ReviewTaskAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+}
+
+model ReviewDecision {
+  id           String   @id @default(cuid())
+  reviewCaseId String
+  deciderUserId String
+  decision     String
+  rationale    String
+  createdAt    DateTime @default(now())
+  reviewCase   ReviewCase @relation(fields: [reviewCaseId], references: [id], onDelete: Cascade)
+  decider      User     @relation(fields: [deciderUserId], references: [id], onDelete: Cascade)
+}
+
+model TrustCard {
+  id            String   @id @default(cuid())
+  tenantId      String
+  subjectId     String
+  slug          String   @unique
+  isPublic      Boolean  @default(false)
+  headline      String?
+  summary       String?
+  lastPublishedAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+model WebhookEndpoint {
+  id              String   @id @default(cuid())
+  tenantId        String
+  url             String
+  signingSecret   String
+  subscribedEvents String[]
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries      WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id                String                @id @default(cuid())
+  tenantId          String
+  webhookEndpointId String
+  eventType         String
+  eventPayload      Json
+  attempt           Int                   @default(0)
+  status            WebhookDeliveryStatus @default(QUEUED)
+  responseCode      Int?
+  responseBody      String?
+  nextRetryAt       DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  webhookEndpoint   WebhookEndpoint       @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+}
+
+model IdempotencyKey {
+  id         String   @id @default(cuid())
+  tenantId   String
+  routeKey   String
+  key        String
+  statusCode Int
+  responseJson Json
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, routeKey, key])
+}
+
+model Session {
+  id           String        @id @default(cuid())
+  tenantId     String
+  userId       String
+  tokenHash    String        @unique
+  ipAddress    String?
+  userAgent    String?
+  status       SessionStatus @default(ACTIVE)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, status])
+  @@index([expiresAt])
+}
+
+model IdentityProviderLink {
+  id                String               @id @default(cuid())
+  tenantId          String
+  userId            String
+  provider          IdentityProviderType
+  providerUserId    String
+  providerEmail     String?
+  accessTokenHash   String?
+  refreshTokenHash  String?
+  metadataJson      Json?
+  linkedAt          DateTime             @default(now())
+  lastSyncedAt      DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  deletedAt         DateTime?
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, providerUserId])
+  @@index([tenantId, userId, provider])
+}
+
+model Organization {
+  id                  String               @id @default(cuid())
+  tenantId            String
+  ownerUserId         String?
+  name                String
+  slug                String
+  legalName           String?
+  organizationType    OrganizationType     @default(COMPANY)
+  websiteUrl          String?
+  status              SubjectStatus        @default(ACTIVE)
+  metadataJson        Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner               User?                @relation("OrganizationOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  members             OrganizationMember[]
+  domains             DomainVerification[]
+  agents              Agent[]
+  apiKeys             ApiKey[]
+  apiRequestLogs      ApiRequestLog[]
+  trustScores         TrustScore[]
+  riskSignals         RiskSignal[]
+  verificationRecords VerificationRecord[]
+  publicTrustProfiles PublicTrustProfile[]
+  adminFlags          AdminFlag[]
+  appIntegrations     AppIntegration[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+}
+
+model OrganizationMember {
+  id             String                 @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationMemberRole
+  invitedByUserId String?
+  joinedAt       DateTime               @default(now())
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+}
+
+model DomainVerification {
+  id               String                   @id @default(cuid())
+  organizationId   String
+  domain           String
+  status           DomainVerificationStatus @default(PENDING)
+  verificationMethod String                 @default("DNS_TXT")
+  challengeToken   String
+  verifiedAt       DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domain])
+  @@index([status, expiresAt])
+}
+
+model Agent {
+  id                  String             @id @default(cuid())
+  tenantId            String
+  organizationId      String?
+  managerUserId       String?
+  displayName         String
+  slug                String
+  description         String?
+  status              AgentStatus        @default(ACTIVE)
+  policyVersion       String?
+  metadataJson        Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization        Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  manager             User?              @relation("AgentManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  credentials         AgentCredential[]
+  verificationRecords VerificationRecord[]
+  trustScores         TrustScore[]
+  riskSignals         RiskSignal[]
+  signedActions       SignedAction[]     @relation("SignedActionActorAgent")
+  auditLogs           AuditLog[]
+  apiKeys             ApiKey[]
+  apiRequestLogs      ApiRequestLog[]
+  publicTrustProfiles PublicTrustProfile[]
+  adminFlags          AdminFlag[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+}
+
+model AgentCredential {
+  id              String              @id @default(cuid())
+  tenantId        String
+  agentId         String
+  credentialType  AgentCredentialType
+  keyId           String
+  keyHash         String
+  algorithm       String              @default("HS256")
+  publicMaterial  String?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent           Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, keyId])
+  @@index([tenantId, credentialType, revokedAt])
+}
+
+model VerificationRecord {
+  id                String                 @id @default(cuid())
+  tenantId          String
+  userId            String?
+  organizationId    String?
+  agentId           String?
+  reviewCaseId      String?
+  requestedByUserId String?
+  reviewedByUserId  String?
+  verificationType  VerificationType
+  provider          VerificationProviderType
+  state             VerificationState      @default(PENDING)
+  confidenceScore   Float?
+  evidenceJson      Json?
+  externalRef       String?
+  expiresAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization      Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent             Agent?                 @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  requestedBy       User?                  @relation("VerificationRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy        User?                  @relation("VerificationReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewCase        ReviewCase?            @relation(fields: [reviewCaseId], references: [id], onDelete: SetNull)
+  trustScores       TrustScore[]
+  riskSignals       RiskSignal[]
+  notifications     Notification[]
+
+  @@index([tenantId, verificationType, state])
+  @@index([userId, organizationId, agentId])
+}
+
+model TrustScore {
+  id                   String          @id @default(cuid())
+  tenantId             String
+  userId               String?
+  organizationId       String?
+  agentId              String?
+  verificationRecordId String?
+  score                Int
+  tier                 TrustTier
+  reasonCodes          String[]
+  version              Int             @default(1)
+  isCurrent            Boolean         @default(true)
+  calculatedAt         DateTime        @default(now())
+  expiresAt            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                 User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization         Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent                Agent?          @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  verificationRecord   VerificationRecord? @relation(fields: [verificationRecordId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, isCurrent, tier])
+  @@index([userId, organizationId, agentId, calculatedAt])
+}
+
+model RiskSignal {
+  id                   String          @id @default(cuid())
+  tenantId             String
+  userId               String?
+  organizationId       String?
+  agentId              String?
+  verificationRecordId String?
+  signalType           RiskSignalType
+  severity             RiskSeverity
+  scoreDelta           Int
+  isActive             Boolean         @default(true)
+  evidenceJson         Json?
+  detectedAt           DateTime        @default(now())
+  resolvedAt           DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                 User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization         Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent                Agent?          @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  verificationRecord   VerificationRecord? @relation(fields: [verificationRecordId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, signalType, severity, isActive])
+  @@index([userId, organizationId, agentId, detectedAt])
+}
+
+model AuditLog {
+  id               String    @id @default(cuid())
+  tenantId         String
+  actorUserId      String?
+  actorAgentId     String?
+  actorApiKeyId    String?
+  actionType       String
+  resourceType     String
+  resourceId       String?
+  requestId        String?
+  ipAddress        String?
+  userAgent        String?
+  outcome          String
+  payloadHash      String?
+  metadataJson     Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser        User?     @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorAgent       Agent?    @relation(fields: [actorAgentId], references: [id], onDelete: SetNull)
+  actorApiKey      ApiKey?   @relation(fields: [actorApiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([requestId])
+  @@index([actorUserId, actorAgentId, actorApiKeyId])
+}
+
+model ApiKey {
+  id               String       @id @default(cuid())
+  tenantId         String
+  userId           String?
+  organizationId   String?
+  agentId          String?
+  integrationId    String?
+  name             String
+  keyPrefix        String       @unique
+  keyHash          String
+  scopes           String[]
+  status           ApiKeyStatus @default(ACTIVE)
+  lastUsedAt       DateTime?
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent            Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  integration      AppIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  requestLogs      ApiRequestLog[]
+  auditLogs        AuditLog[]
+
+  @@index([tenantId, status, expiresAt])
+  @@index([userId, organizationId, agentId])
+}
+
+model ApiRequestLog {
+  id               String            @id @default(cuid())
+  tenantId         String
+  apiKeyId         String?
+  userId           String?
+  organizationId   String?
+  agentId          String?
+  integrationId    String?
+  method           String
+  path             String
+  statusCode       Int
+  outcome          ApiRequestOutcome
+  latencyMs        Int
+  requestId        String
+  requestBodyHash  String?
+  responseBodyHash String?
+  ipAddress        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  apiKey           ApiKey?           @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent            Agent?            @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  integration      AppIntegration?   @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([requestId])
+  @@index([apiKeyId, userId, organizationId, agentId])
+}
+
+model PublicTrustProfile {
+  id               String                    @id @default(cuid())
+  tenantId         String
+  userId           String?
+  organizationId   String?
+  agentId          String?
+  slug             String                    @unique
+  status           PublicTrustProfileStatus  @default(DRAFT)
+  headline         String?
+  summary          String?
+  traitsJson       Json?
+  latestScore      Int?
+  latestTier       TrustTier?
+  visibilityJson   Json?
+  publishedByUserId String?
+  publishedAt      DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  deletedAt        DateTime?
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent            Agent?                    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  publishedBy      User?                     @relation("PublicTrustProfilePublisher", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId])
+  @@unique([tenantId, organizationId])
+  @@unique([tenantId, agentId])
+  @@index([tenantId, status, publishedAt])
+}
+
+model AdminFlag {
+  id               String             @id @default(cuid())
+  tenantId         String
+  userId           String?
+  organizationId   String?
+  agentId          String?
+  reviewCaseId     String?
+  raisedByUserId   String?
+  resolvedByUserId String?
+  reasonCode       String
+  description      String?
+  severity         AdminFlagSeverity
+  status           AdminFlagStatus    @default(OPEN)
+  metadataJson     Json?
+  raisedAt         DateTime           @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  agent            Agent?             @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  reviewCase       ReviewCase?        @relation(fields: [reviewCaseId], references: [id], onDelete: SetNull)
+  raisedBy         User?              @relation("AdminFlagRaisedBy", fields: [raisedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy       User?              @relation("AdminFlagResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, severity])
+  @@index([userId, organizationId, agentId])
+}
+
+model Notification {
+  id                String             @id @default(cuid())
+  tenantId          String
+  recipientUserId   String
+  reviewCaseId      String?
+  verificationRecordId String?
+  type              NotificationType
+  status            NotificationStatus @default(UNREAD)
+  title             String
+  body              String
+  metadataJson      Json?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient         User               @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  reviewCase        ReviewCase?        @relation(fields: [reviewCaseId], references: [id], onDelete: SetNull)
+  verificationRecord VerificationRecord? @relation(fields: [verificationRecordId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, recipientUserId, status])
+  @@index([createdAt])
+}
+
+model AppIntegration {
+  id                String             @id @default(cuid())
+  tenantId          String
+  organizationId    String?
+  createdByUserId   String?
+  type              IntegrationType
+  providerAccountId String?
+  name              String
+  status            IntegrationStatus  @default(ACTIVE)
+  configJson        Json
+  secretHash        String?
+  lastSyncAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdBy         User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  apiKeys           ApiKey[]
+  requestLogs       ApiRequestLog[]
+
+  @@unique([tenantId, type, providerAccountId])
+  @@index([tenantId, status])
+}

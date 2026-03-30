@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: internet-passport-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: internet_passport
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d internet_passport"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: internet-passport-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["pnpm", "--filter", "@internet-passport/api", "start"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/internet_passport?schema=public
+      REDIS_URL: redis://redis:6379
+      API_PORT: 4000
+      JWT_SECRET: replace-with-32-char-secret
+      ACTION_SIGNING_SECRET: replace-with-32-char-secret
+      AUTH_SECRET: replace-with-32-char-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["pnpm", "--filter", "@internet-passport/web", "start"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/internet_passport?schema=public
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: replace-with-32-char-secret
+      NEXTAUTH_SECRET: replace-with-32-char-secret
+      JWT_SECRET: replace-with-32-char-secret
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

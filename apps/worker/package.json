@@ -1,0 +1,27 @@
+{
+  "name": "@internet-passport/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for worker\""
+  },
+  "dependencies": {
+    "@internet-passport/config": "workspace:*",
+    "@internet-passport/core": "workspace:*",
+    "@internet-passport/db": "workspace:*",
+    "@internet-passport/queue": "workspace:*",
+    "@internet-passport/verification-core": "workspace:*",
+    "bullmq": "^5.61.2",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
