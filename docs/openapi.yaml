@@ -1,0 +1,678 @@
+openapi: 3.1.0
+info:
+  title: Internet Passport API
+  version: 0.1.0
+  summary: API-first trust infrastructure for identities, verification, trust decisions, and signed actions.
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: x-idempotency-key
+      required: false
+      schema:
+        type: string
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+    EnvelopeResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: "null"
+        error:
+          oneOf:
+            - type: object
+              properties:
+                code: { type: string }
+                message: { type: string }
+            - type: "null"
+        meta:
+          type: object
+          additionalProperties: true
+      required: [success, data, error, meta]
+    LoginRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        tenantSlug: { type: string }
+      required: [email, password]
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tenantId: { type: string }
+        tenantSlug: { type: string }
+        role: { type: string }
+        userId: { type: string }
+      required: [accessToken, tenantId, role, userId]
+    SubjectCreateRequest:
+      type: object
+      properties:
+        subjectType:
+          type: string
+          enum: [HUMAN, DEVELOPER, ORG, AGENT]
+        displayName: { type: string }
+        workspaceId: { type: string }
+      required: [subjectType, displayName]
+    Subject:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        subjectType: { type: string }
+        displayName: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, tenantId, subjectType, displayName, status]
+    VerificationCreateRequest:
+      type: object
+      properties:
+        subjectId: { type: string }
+        verificationType: { type: string }
+        provider: { type: string }
+      required: [subjectId, verificationType]
+    TrustEvaluateRequest:
+      type: object
+      properties:
+        subjectId: { type: string }
+        contextType: { type: string }
+        actionType: { type: string }
+      required: [subjectId, contextType, actionType]
+    ActionSignRequest:
+      type: object
+      properties:
+        subjectId: { type: string }
+        agentSubjectId: { type: string }
+        contextType: { type: string }
+        actionType: { type: string }
+        resourceType: { type: string }
+        resourceId: { type: string }
+        payload:
+          type: object
+          additionalProperties: true
+        decisionRefId: { type: string }
+        ttlSeconds: { type: integer, minimum: 30, maximum: 3600 }
+      required: [subjectId, contextType, actionType, resourceType, resourceId, payload]
+paths:
+  /health:
+    get:
+      summary: Service health check
+      security: []
+      responses:
+        "200":
+          description: API health
+  /v1/health:
+    get:
+      summary: Deep service health (DB and queue checks)
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+        "503":
+          description: Service degraded
+  /v1/auth/login:
+    post:
+      summary: Login and receive bearer access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /v1/subjects:
+    post:
+      summary: Create subject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubjectCreateRequest" }
+      responses:
+        "200":
+          description: Subject created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subject" }
+    get:
+      summary: List subjects
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Subject list
+  /v1/subjects/{subjectId}:
+    get:
+      summary: Get one subject with verification details
+      parameters:
+        - in: path
+          name: subjectId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Subject found
+  /v1/organizations:
+    post:
+      summary: Create organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                legalName: { type: string }
+                websiteUrl: { type: string, format: uri }
+              required: [name]
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/organizations/{orgId}/domains/challenges:
+    post:
+      summary: Create domain verification challenge
+      parameters:
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain: { type: string }
+              required: [domain]
+      responses:
+        "201":
+          description: Domain challenge created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/organizations/{orgId}/domains/{domainId}/verify:
+    post:
+      summary: Mark domain challenge verified
+      parameters:
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: domainId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Domain verification updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/organizations/{orgId}/agents:
+    post:
+      summary: Create organization agent
+      parameters:
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string }
+                handle: { type: string }
+                description: { type: string }
+                capabilities:
+                  type: array
+                  items: { type: string }
+              required: [displayName, handle]
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/verifications:
+    post:
+      summary: Create and enqueue verification request
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerificationCreateRequest" }
+      responses:
+        "202":
+          description: Verification queued
+  /v1/verifications/{verificationId}:
+    get:
+      summary: Get verification status
+      parameters:
+        - in: path
+          name: verificationId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Verification details
+  /v1/trust/evaluate:
+    post:
+      summary: Evaluate trust and persist decision
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TrustEvaluateRequest" }
+      responses:
+        "200":
+          description: Trust decision result
+  /v1/trust/simulate:
+    post:
+      summary: Simulate trust evaluation (non-persistent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/TrustEvaluateRequest"
+                - type: object
+                  properties:
+                    policyDefinition:
+                      type: object
+                      properties:
+                        allowThreshold: { type: number }
+                        stepUpThreshold: { type: number }
+                        reviewThreshold: { type: number }
+      responses:
+        "200":
+          description: Simulated decision
+  /v1/actions/sign:
+    post:
+      summary: Issue signed action with nonce
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActionSignRequest" }
+      responses:
+        "200":
+          description: Signed action created
+  /v1/actions/verify:
+    post:
+      summary: Verify signed action payload/signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actionId: { type: string }
+                payload:
+                  type: object
+                  additionalProperties: true
+              required: [actionId, payload]
+      responses:
+        "200":
+          description: Verification result
+  /v1/developer/api-keys:
+    get:
+      summary: List developer API keys
+      responses:
+        "200":
+          description: API keys
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+    post:
+      summary: Create developer API key (secret shown once)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                scopes:
+                  type: array
+                  items: { type: string }
+                organizationId: { type: string }
+                agentId: { type: string }
+                expiresInDays: { type: integer, minimum: 1, maximum: 365 }
+              required: [name, scopes]
+      responses:
+        "200":
+          description: API key created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/api-keys/{id}/revoke:
+    post:
+      summary: Revoke developer API key
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: API key revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/trust-check:
+    post:
+      summary: Trust check endpoint for user, organization, or agent
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetType:
+                  type: string
+                  enum: [user, organization, agent]
+                targetId: { type: string }
+                contextType: { type: string }
+                actionType: { type: string }
+              required: [targetType, targetId]
+      responses:
+        "200":
+          description: Trust check response
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/trust/users/{userId}/summary:
+    get:
+      summary: User trust summary
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: User trust summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/trust/organizations/{organizationId}/summary:
+    get:
+      summary: Organization trust summary
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: organizationId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Organization trust summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/trust/agents/{agentId}/summary:
+    get:
+      summary: Agent trust summary
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: agentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Agent trust summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/developer/signed-actions/validate:
+    post:
+      summary: Validate signed action payload hash and status
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actionId: { type: string }
+                payload:
+                  type: object
+                  additionalProperties: true
+              required: [actionId, payload]
+      responses:
+        "200":
+          description: Validation response
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeResponse" }
+  /v1/audit/events:
+    get:
+      summary: List audit events
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0 }
+        - in: query
+          name: eventType
+          schema: { type: string }
+      responses:
+        "200":
+          description: Audit event list
+  /v1/reviews/cases:
+    post:
+      summary: Create review case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subjectId: { type: string }
+                caseType: { type: string }
+                priority:
+                  type: string
+                  enum: [LOW, MEDIUM, HIGH]
+              required: [subjectId, caseType]
+      responses:
+        "200":
+          description: Review case created
+    get:
+      summary: List review cases
+      responses:
+        "200":
+          description: Review case list
+  /v1/reviews/cases/{id}/assign:
+    post:
+      summary: Assign review task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reviewTaskId: { type: string }
+                assignedToUserId: { type: string }
+              required: [reviewTaskId, assignedToUserId]
+      responses:
+        "200":
+          description: Task assigned
+  /v1/reviews/cases/{id}/decision:
+    post:
+      summary: Submit review decision
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum: [APPROVE, REJECT, ESCALATE]
+                rationale: { type: string }
+              required: [decision, rationale]
+      responses:
+        "200":
+          description: Decision recorded
+  /v1/trust-cards:
+    post:
+      summary: Create or update trust card draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subjectId: { type: string }
+                slug: { type: string }
+                headline: { type: string }
+                summary: { type: string }
+              required: [subjectId, slug]
+      responses:
+        "200":
+          description: Trust card upserted
+  /v1/trust-cards/{id}/publish:
+    post:
+      summary: Publish trust card
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Trust card published
+  /v1/trust-cards/{slug}:
+    get:
+      summary: Public trust card
+      security: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Public trust card data
+  /v1/webhooks:
+    post:
+      summary: Register webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, format: uri }
+                signingSecret: { type: string }
+                subscribedEvents:
+                  type: array
+                  items: { type: string }
+              required: [url, signingSecret, subscribedEvents]
+      responses:
+        "200":
+          description: Webhook endpoint created
+    get:
+      summary: List webhook endpoints
+      responses:
+        "200":
+          description: Endpoint list
+  /v1/webhooks/{id}/replay:
+    post:
+      summary: Replay latest failed delivery for endpoint
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Replay delivery enqueued

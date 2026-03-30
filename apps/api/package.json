@@ -1,0 +1,33 @@
+{
+  "name": "@internet-passport/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for api\""
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@internet-passport/config": "workspace:*",
+    "@internet-passport/core": "workspace:*",
+    "@internet-passport/db": "workspace:*",
+    "@internet-passport/queue": "workspace:*",
+    "@internet-passport/trust-engine": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.61.2",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.1",
+    "jose": "^6.2.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

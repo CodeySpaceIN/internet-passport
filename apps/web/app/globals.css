@@ -1,0 +1,303 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --card: #ffffff;
+  --card-border: #e2e8f0;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --muted: #94a3b8;
+  --card: #0f172a;
+  --card-border: #334155;
+  --accent: #60a5fa;
+  --accent-foreground: #0f172a;
+}
+
+/* Dark-mode fallback overrides for hardcoded slate classes used across app pages. */
+.dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/70 {
+  background-color: #111c33 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.public-atmosphere {
+  position: relative;
+  background: #f8fafc;
+}
+
+.public-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.35;
+}
+
+.public-dark {
+  --background: #050505;
+  --foreground: #f8fafc;
+  --muted: #a1a1aa;
+  --card: rgba(255, 255, 255, 0.03);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --accent: #22c55e;
+  --accent-foreground: #03200f;
+}
+
+.public-light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #475569;
+  --card: rgba(255, 255, 255, 0.86);
+  --card-border: rgba(15, 23, 42, 0.12);
+  --accent: #16a34a;
+  --accent-foreground: #ffffff;
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  backdrop-filter: blur(20px);
+  position: relative;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.14);
+  z-index: -1;
+}
+
+.gradient-text {
+  color: inherit;
+}
+
+.color-mesh {
+  background: transparent;
+}
+
+.trust-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.65);
+  animation: trustPulse 2.2s ease-out infinite;
+}
+
+@keyframes trustPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+    transform: scale(0.95);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(34, 197, 94, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    transform: scale(0.95);
+  }
+}
+
+@keyframes floatOrb {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.infrastructure-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.terminal-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 10, 14, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 30px 60px rgba(0, 0, 0, 0.35);
+}
+
+.public-light .terminal-panel {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 24px 48px rgba(2, 6, 23, 0.08);
+}
+
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-card::before {
+  content: none;
+  pointer-events: none;
+}
+
+.spotlight-card:hover::before {
+  opacity: 0;
+}
+
+.public-light .spotlight-card::before {
+  content: none;
+}
+
+.nav-link-glow {
+  text-shadow: 0 0 0 rgba(255, 255, 255, 0);
+}
+
+.nav-link-glow:hover {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+}
+
+.public-light .nav-link-glow {
+  text-shadow: 0 0 0 rgba(15, 23, 42, 0);
+}
+
+.public-light .nav-link-glow:hover {
+  text-shadow: 0 0 10px rgba(15, 23, 42, 0.2);
+}
+
+.public-light .text-muted {
+  color: #64748b !important;
+}
+
+.public-light .border-white\/10,
+.public-light .border-white\/15 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.public-light .bg-black\/30,
+.public-light .bg-black\/35,
+.public-light .bg-black\/40,
+.public-light .bg-black\/45 {
+  background-color: rgba(241, 245, 249, 0.72) !important;
+}
+
+/* Keep footer links dark-theme on public-light pages. */
+.public-light .footer-dark .footer-link {
+  color: #a3b3c7 !important;
+}
+
+.public-light .footer-dark .footer-link:hover {
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+}
+
+.public-light .footer-dark .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+
+.public-light .footer-dark .text-zinc-400 {
+  color: #94a3b8 !important;
+}
+
+.public-light .footer-dark .text-zinc-500 {
+  color: #71717a !important;
+}
+
+.pulse-line {
+  stroke-dasharray: 12 12;
+  animation: pulseLine 2.4s linear infinite;
+}
+
+@keyframes pulseLine {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.globe-rotate {
+  animation: globeRotate 24s linear infinite;
+}
+
+@keyframes globeRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

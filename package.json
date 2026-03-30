@@ -1,0 +1,28 @@
+{
+  "name": "internet-passport",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --check . && turbo run format",
+    "format:write": "prettier --write .",
+    "db:generate": "pnpm --filter @internet-passport/db db:generate",
+    "db:migrate": "pnpm --filter @internet-passport/db db:migrate",
+    "db:migrate:deploy": "pnpm --filter @internet-passport/db db:migrate:deploy",
+    "db:drift": "pnpm --filter @internet-passport/db db:drift",
+    "db:push": "pnpm --filter @internet-passport/db db:push",
+    "db:seed": "pnpm --filter @internet-passport/db db:seed",
+    "smoke:verification": "node scripts/smoke-verification.mjs",
+    "test:core-journeys": "node scripts/integration-core-journeys.mjs",
+    "test:all": "pnpm smoke:verification && pnpm test:core-journeys"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3"
+  }
+}
